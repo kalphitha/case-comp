@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GCPL bank rationalization model</title>
+<style>
+:root{--bg:#0d0d0f;--panel:#1a1a1f;--line:#3a3a42;--tx:#f4f4f6;--mu:#a8a8b3;--ey:#ffe600;--a:#1f6b3a;--y:#1d4f8a;--n:#8a2a2a;--q:#3a3a42;--ok:#7ddc8b;--wr:#ffb454;--bd:#ff6b6b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f6f6f2;--panel:#fff;--line:#d4d4cc;--tx:#1a1a24;--mu:#5c5c68;--ey:#8a7a00;--a:#2e9b57;--y:#3b7fd0;--n:#d65a5a;--q:#cfcfc8;--ok:#1d7a33;--wr:#a85d00;--bd:#c0392b}}
+:root{color-scheme:dark light}*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 "Helvetica Neue",Arial,sans-serif;padding:16px}
+main{max-width:1050px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px;color:var(--ey)}h2{font-size:17px;margin:0 0 6px}
+p,.mu{margin:0 0 10px;color:var(--mu);max-width:75ch;font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}
+th,td{padding:6px 4px;text-align:center;font-size:13px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+select,input[type=number]{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:4px;font:inherit;width:54px}
+td.c{cursor:pointer;border:2px solid var(--panel);border-radius:6px;color:#fff;min-width:42px;user-select:none}
+.A{background:var(--a)}.Y{background:var(--y)}.N{background:var(--n)}.Q{background:var(--q);color:var(--tx)!important}
+.lg{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;margin-bottom:8px}.lg span{padding:2px 8px;border-radius:6px;color:#fff}
+.v{border-top:1px solid var(--line);padding:8px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:13px;border:1px solid currentColor;margin-left:6px}
+.core{color:var(--ok)}.reg{color:var(--wr)}.out{color:var(--bd)}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:14px}
+button{background:var(--ey);color:#0d0d0f;border:0;border-radius:6px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+</style></head><body><main>
+<h1>GCPL bank rationalization model</h1>
+<p>Step 1 scores every bank. Step 2 checks whether a weak bank can actually be exited. The result is a role for each bank and where its accounts would move.</p>
+
+<div class="panel"><h2>Result</h2><div id="out"></div></div>
+
+<div class="panel"><h2>1. Scorecard</h2>
+<p>Coverage is calculated from the country table below. The other criteria start at a neutral 3, so replace them with your own judgment, and say that on the slide. Untick the gate if a bank fails the credit or regulatory minimum.</p>
+<div class="row"><label>Core at or above <input type="number" id="tc" value="65"></label><label>Regional at or above <input type="number" id="tr" value="55"></label><span>Weights total: <b id="tw"></b></span><button id="rs">Reset</button></div>
+<div class="scroll"><table id="sc"></table></div></div>
+
+<div class="panel"><h2>2. Can the accounts move?</h2>
+<div class="lg"><span class="A">Account today</span><span class="Y">Confirmed to operate</span><span class="N">Confirmed it does not</span><span class="Q">Verify</span></div>
+<p>Tap a cell to change it. Account today is my reading of the case table, taken from a slanted photo, so please check it. HSBC and BNP are marked No in South Africa and DB Yes, from my own searches. Other gray cells still need checking.</p>
+<div class="scroll"><table id="g"></table></div></div>
+
+<script>
+var K=["DB","HSBC","BNP","SocGen","SCB","JPM","Citi","ING","UniCredit","Standard Bank","Nova Scotia","BBVA"];
+var R=[["South Africa","NNNNNNNNNYNN"],["Bangladesh","YYNNYNYNNNNN"],["France","NYYYYNYYYNNN"],["Germany","YYYYYYYYYNNN"],["Italy","YYYNYNYYYNNY"],["Spain","YYNNNYYYNNNY"],["Netherlands","YYNNNNYYNNNN"],["Ireland","NNNNNNNNNNYN"],["UK","YYNNYNNNYYNN"],["India","YYYYYYYYNNNN"],["Dubai","NYNNYYYYNNNN"],["Canada","YYYYYYYYNNYN"],["USA","YYYNYYYYNNNN"],["Mexico","YYNNYNYYYNNN"],["Brazil","YYYYYYYYNNNY"]];
+var V={"South Africa":{"HSBC":"N","BNP":"N","DB":"Y"}};
+var CR=["Coverage (auto)","Cost","Liquidity and pooling","Connectivity and data","Payments and FX","Credit support","Service"];
+var W0=[25,20,15,15,10,10,5],W,S,M,G;
+function init(){W=W0.slice();document.getElementById("tc").value=65;document.getElementById("tr").value=55;
+S=R.map(function(r){return r[1].split("").map(function(c,j){if(c=="Y")return"A";var v=V[r[0]]&&V[r[0]][K[j]];return v||"Q"})});
+M=K.map(function(){return[0,3,3,3,3,3,3]});G=K.map(function(){return true});}
+var cyc={A:"Y",Y:"N",N:"Q",Q:"A"};
+function cnt(j){return S.filter(function(r){return r[j]=="A"}).length}
+function render(){
+var mx=Math.max.apply(null,K.map(function(k,j){return cnt(j)}))||1;
+var tot=W.reduce(function(a,b){return a+b},0),tw=document.getElementById("tw");tw.textContent=tot+"%";tw.style.color=tot==100?"var(--ok)":"var(--wr)";
+var tc=+document.getElementById("tc").value,tr=+document.getElementById("tr").value;
+var h="<tr><th>Bank</th><th>Countries</th>"+CR.map(function(c,i){return"<th>"+c+"<br><input type=number class=w data-i="+i+" value="+W[i]+"></th>"}).join("")+"<th>Gate</th><th>Score</th></tr>";
+var sc=[],ro=[];
+K.forEach(function(k,j){
+var cv=1+4*cnt(j)/mx;M[j][0]=cv;
+var s=tot?Math.round(M[j].reduce(function(a,x,i){return a+W[i]*x/5},0)/tot*100):0;sc.push(s);
+var r=!G[j]?"freeze":(s>=tc&&M[j][2]>=3&&M[j][3]>=3)?"core":s>=tr?"reg":"out";ro.push(r);
+h+="<tr><td>"+k+"</td><td>"+cnt(j)+"</td><td>"+cv.toFixed(1)+"</td>"+[1,2,3,4,5,6].map(function(i){var o="<select data-j="+j+" data-i="+i+">";for(var v=1;v<=5;v++)o+="<option"+(M[j][i]==v?" selected":"")+">"+v+"</option>";return"<td>"+o+"</select></td>"}).join("")+"<td><input type=checkbox class=gt data-j="+j+(G[j]?" checked":"")+"></td><td><b>"+s+"</b></td></tr>"});
+document.getElementById("sc").innerHTML=h;
+var g="<tr><th>Country</th>"+K.map(function(k){return"<th>"+k+"</th>"}).join("")+"</tr>";
+R.forEach(function(r,i){g+="<tr><td>"+r[0]+"</td>"+S[i].map(function(s,j){return"<td class='c "+s+"' data-i="+i+" data-j="+j+">"+({A:"Acct",Y:"Yes",N:"No",Q:"?"})[s]+"</td>"}).join("")+"</tr>"});
+document.getElementById("g").innerHTML=g;
+var o="",ord=K.map(function(k,j){return j}).sort(function(a,b){return sc[b]-sc[a]});
+ord.forEach(function(j){
+var cs=[],mv=[],bl=[],vf=[];
+R.forEach(function(r,i){if(S[i][j]!="A")return;cs.push(r[0]);
+var al=K.map(function(x,m){return m}).filter(function(m){return m!=j&&(S[i][m]=="A"||S[i][m]=="Y")});
+var cr=al.filter(function(m){return ro[m]=="core"});var use=cr.length?cr:al;
+if(use.length)mv.push(r[0]+" → "+use.map(function(m){return K[m]}).join(", "));
+else if(K.some(function(x,m){return m!=j&&S[i][m]=="Q"}))vf.push(r[0]);else bl.push(r[0])});
+var t,c,x="";
+if(ro[j]=="freeze"){t="Freeze: gate failed";c="out";x="No new business. Review credit and compliance before any further decision."}
+else if(ro[j]=="core"){t="Core partner";c="core";x="Keep. Covers "+cs.length+" countries, so transfers stay inside one bank."}
+else if(ro[j]=="reg"){t="Regional, keep and review";c="reg";x="Keep where it adds coverage. Review fees and services."}
+else{t="Exit candidate";c="out";x=bl.length?"Keep a minimal local account in "+bl.join(", ")+" because no other bank works there. ":"";
+if(mv.length)x+="Move: "+mv.join("; ")+". ";if(vf.length)x+="Verify an alternative in "+vf.join(", ")+" first."}
+o+="<div class=v><b>"+K[j]+"</b> "+sc[j]+"/100<span class='tag "+c+"'>"+t+"</span><div class=mu style='margin:4px 0 0'>"+x+"</div></div>"});
+document.getElementById("out").innerHTML=o}
+document.addEventListener("change",function(e){var t=e.target;
+if(t.tagName=="SELECT"){M[t.dataset.j][t.dataset.i]=+t.value}
+else if(t.className=="w"){W[t.dataset.i]=+t.value||0}
+else if(t.className=="gt"){G[t.dataset.j]=t.checked}
+else if(t.id!="tc"&&t.id!="tr")return;render()});
+document.getElementById("g").onclick=function(e){var t=e.target;if(t.className.indexOf("c ")<0)return;S[t.dataset.i][t.dataset.j]=cyc[S[t.dataset.i][t.dataset.j]];render()};
+document.getElementById("rs").onclick=function(){init();render()};
+init();render();
+</script></main></body></html>
